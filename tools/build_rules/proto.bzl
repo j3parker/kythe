@@ -45,6 +45,17 @@ _go_proto_library_hack = rule(
 def go_package_name(go_prefix, label):
   return "%s%s/%s" % (go_prefix.go_prefix, label.package, label.name)
 
+def _proto_filename_to_csharp_classname(proto_file):
+  """Converts things_like_this.proto to ThingsLikeThis
+
+  This is necessary for handling the output of protoc for C#.
+  """
+  if not proto_file.endswith('.proto'):
+    fail("proto_file = '" + proto_file + "' does not end with .proto")
+
+  return proto_file[:len(proto_file)-len('.proto')].replace("_", " ").title().replace(" ", "")
+
+
 def _genproto_impl(ctx):
   proto_src_deps = [src.proto_src for src in ctx.attr.deps]
   inputs, outputs, arguments = [ctx.file.src] + proto_src_deps, [], ["--proto_path=."]
@@ -107,6 +118,10 @@ def _genproto_impl(ctx):
           "--plugin=" + ctx.executable._protoc_gen_go.path,
           "--golang_out=%s:%s" % (",".join(go_cfg), genroot)
       ]
+
+  if ctx.attr.gen_csharp:
+    outputs += [ctx.outputs.csharp_src]
+    arguments += ["--csharp_out=" + ctx.configuration.genfiles_dir.path + "/kythe/proto/"]
 
   ctx.action(
       mnemonic = "GenProto",
@@ -172,9 +187,10 @@ _genproto_attrs = {
     "gen_cc": attr.bool(),
     "gen_java": attr.bool(),
     "gen_go": attr.bool(),
+    "gen_csharp": attr.bool(),
 }
 
-def _genproto_outputs(gen_cc, gen_go, gen_java, emit_metadata):
+def _genproto_outputs(src, gen_cc, gen_go, gen_java, gen_csharp, emit_metadata):
   outputs = {}
   if emit_metadata:
     outputs += {
@@ -197,6 +213,11 @@ def _genproto_outputs(gen_cc, gen_go, gen_java, emit_metadata):
     outputs += {
         "java_src": "%{src}.srcjar",
     }
+  if gen_csharp:
+    outputs += {
+        "csharp_src": _proto_filename_to_csharp_classname(src.name) + '.cs'
+    }
+
   return outputs
 
 genproto = rule(
@@ -208,7 +229,7 @@ genproto = rule(
 
 def proto_library(name, srcs, deps=[], visibility=None,
                   has_services=False,
-                  java_api_version=0, go_api_version=0, cc_api_version=0,
+                  java_api_version=0, go_api_version=0, cc_api_version=0, csharp_api_version = 0,
                   emit_metadata=False, gofast=True, go_package=None):
   if java_api_version not in (None, 0, 2):
     fail("java_api_version must be 2 if present")
@@ -216,6 +237,8 @@ def proto_library(name, srcs, deps=[], visibility=None,
     fail("go_api_version must be 2 if present")
   if cc_api_version not in (None, 0, 2):
     fail("cc_api_version must be 2 if present")
+  if csharp_api_version not in (None, 0, 2):
+    fail("csharp_api_version must be 2 if present")
 
   proto_pkg = genproto(name=name,
                        src=srcs[0],
@@ -224,6 +247,7 @@ def proto_library(name, srcs, deps=[], visibility=None,
                        gen_java=bool(java_api_version),
                        gen_go=bool(go_api_version),
                        gen_cc=bool(cc_api_version),
+                       gen_csharp=bool(csharp_api_version),
                        emit_metadata=emit_metadata,
                        gofast=gofast, go_package=go_package)
 
