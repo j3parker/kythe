@@ -20,6 +20,7 @@ package kythe.proto.common;
 
 option java_package = "com.google.devtools.kythe.proto";
 option java_multiple_files = true;
+option csharp_namespace = "Google.DevTools.Kythe.Proto";
 
 // Fact represents a single key/value fact from the graph.
 message Fact {

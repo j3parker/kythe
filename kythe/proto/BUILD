@@ -28,6 +28,7 @@ proto_library(
     cc_api_version = 2,
     go_api_version = 2,
     java_api_version = 2,
+    csharp_api_version = 2,
 )
 
 # Public Kythe GraphStore analyzer output format
@@ -37,6 +38,7 @@ proto_library(
     cc_api_version = 2,
     go_api_version = 2,
     java_api_version = 2,
+    csharp_api_version = 2,
     visibility = [
         "//kythe:default_visibility",
         "//third_party/llvm/src:__pkg__",
